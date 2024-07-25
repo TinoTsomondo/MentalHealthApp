@@ -1,0 +1,180 @@
+greatt its now working, lets work on login authentication now for this 
+
+
+import React, { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom'; // Import useNavigate and Link from react-router-dom
+import '../styles/Login.css';
+
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate(); // Initialize useNavigate
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (email === '' || password === '') {
+      setError('Please fill in all fields.');
+    } else {
+      // Simulate a successful login for now
+      console.log('Logging in with', email, password);
+      // Navigate to the therapist dashboard
+      navigate('/therapists/dashboard');
+    }
+  };
+
+  return 
+    
+
+
+      
+
+Login
+
+
+      
+
+
+        
+
+
+          Email
+           setEmail(e.target.value)}
+            required
+          />
+        
+
+
+        
+
+
+          Password
+           setPassword(e.target.value)}
+            required
+          />
+        
+
+
+        {error && 
+
+{error}
+
+}
+        Login
+      
+
+
+      
+
+
+        Don't have an account? Create Account
+      
+
+
+    
+
+
+  );
+};
+
+export default Login;
+
+
+const express = require('express');
+const router = express.Router();
+const db = require('./db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+
+// Load environment variables from .env file
+dotenv.config();
+
+// Use the secret key from environment variables
+const SECRET_KEY = process.env.SECRET_KEY;
+
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).send({ error: 'Email and password are required' });
+  }
+
+  try {
+    const query = 'SELECT * FROM Therapists WHERE Email = ?';
+    db.query(query, [email], async (error, results) => {
+      if (error) {
+        console.error('Database error:', error);
+        return res.status(500).send({ error: 'Database error: ' + error });
+      }
+
+      if (results.length === 0) {
+        return res.status(401).send({ error: 'Invalid email or password' });
+      }
+
+      const therapist = results[0];
+      const match = await bcrypt.compare(password, therapist.PasswordHash);
+
+      if (!match) {
+        return res.status(401).send({ error: 'Invalid email or password' });
+      }
+
+      const token = jwt.sign({ therapistId: therapist.TherapistID }, SECRET_KEY, { expiresIn: '1h' });
+      res.status(200).send({ message: 'Login successful', token });
+    });
+  } catch (err) {
+    console.error('Error during login:', err);
+    res.status(500).send({ error: 'Error during login: ' + err });
+  }
+});
+
+router.post('/register', async (req, res) => {
+  const { fullName, password, email, dateOfBirth, gender, specialization, phone } = req.body;
+
+  if (!fullName || !password || !email || !dateOfBirth || !gender || !specialization || !phone) {
+    return res.status(400).send({ error: 'All fields are required' });
+  }
+
+  try {
+    // Check if email already exists
+    const checkEmailQuery = 'SELECT * FROM Therapists WHERE Email = ?';
+    db.query(checkEmailQuery, [email], async (error, results) => {
+      if (error) {
+        console.error('Database error:', error);
+        return res.status(500).send({ error: 'Database error: ' + error });
+      }
+
+      if (results.length > 0) {
+        return res.status(400).send({ error: 'Email already exists' });
+      }
+
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Insert new therapist
+      const insertQuery = `
+        INSERT INTO Therapists (FullName, PasswordHash, Email, DateOfBirth, Gender, Specialization, Phone)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+      db.query(insertQuery, [fullName, hashedPassword, email, dateOfBirth, gender, specialization, phone], (error, result) => {
+        if (error) {
+          console.error('Database error:', error);
+          return res.status(500).send({ error: 'Database error: ' + error });
+        }
+
+        const therapistId = result.insertId;
+        const token = jwt.sign({ therapistId }, SECRET_KEY, { expiresIn: '1h' });
+        res.status(201).send({ message: 'Registration successful', token });
+      });
+    });
+  } catch (err) {
+    console.error('Error during registration:', err);
+    res.status(500).send({ error: 'Error during registration: ' + err });
+  }
+});
+
+module.exports = router;
+
+
+
+ they should login with email and password and  ensure login authentication before being directed to that page therapist dashboard
