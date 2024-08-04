@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '/services/chats_service.dart';
-import 'dart:async';
+import 'package:intl/intl.dart';
 
 class ChatPage extends StatefulWidget {
   final String contactName;
@@ -19,24 +19,26 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final List<Map<String, String>> _messages = [];
+  final List<Map<String, dynamic>> _messages = [];
   final TextEditingController _controller = TextEditingController();
   final ChatService _chatService = ChatService();
   bool _isLoading = true;
-  late Timer _timer;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
+    _chatService.joinRoom(widget.userId);
+    _chatService.listenForNewMessages(_handleNewMessage);
     _fetchMessages();
-    // Set up a timer to fetch new messages every 5 seconds
-    _timer = Timer.periodic(Duration(seconds: 5), (timer) => _fetchNewMessages());
   }
 
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
+  void _handleNewMessage(Map<String, dynamic> newMessage) {
+    setState(() {
+      _messages.add(newMessage);
+      _groupMessagesByDate();
+    });
+    _scrollToBottom();
   }
 
   Future<void> _fetchMessages() async {
@@ -44,8 +46,10 @@ class _ChatPageState extends State<ChatPage> {
       final messages = await _chatService.fetchMessages(widget.userId, widget.contactId);
       setState(() {
         _messages.addAll(messages);
+        _groupMessagesByDate();
         _isLoading = false;
       });
+      _scrollToBottom();
     } catch (e) {
       print('Error fetching messages: $e');
       setState(() {
@@ -54,33 +58,38 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  Future<void> _fetchNewMessages() async {
-  try {
-    final latestMessageTime = _messages.isNotEmpty ? _messages.first['timestamp'] : null;
-    final newMessages = await _chatService.fetchNewMessages(widget.userId, widget.contactId, latestMessageTime);
-    if (newMessages.isNotEmpty) {
-      setState(() {
-        _messages.insertAll(0, newMessages);
-      });
+  void _groupMessagesByDate() {
+    _messages.sort((a, b) => DateTime.parse(a['timestamp']).compareTo(DateTime.parse(b['timestamp'])));
+
+    String currentDate = '';
+    for (var message in _messages) {
+      final messageDate = DateFormat('yyyy-MM-dd').format(DateTime.parse(message['timestamp']));
+      if (messageDate != currentDate) {
+        currentDate = messageDate;
+        message['showDate'] = true;
+      } else {
+        message['showDate'] = false;
+      }
     }
-  } catch (e) {
-    print('Error fetching new messages: $e');
   }
-}
 
   void _sendMessage() async {
     if (_controller.text.isNotEmpty) {
-      setState(() {
-        _messages.insert(0, {'text': _controller.text, 'sender': 'user', 'timestamp': DateTime.now().toIso8601String()});
-      });
-
-      try {
-        await _chatService.sendMessage(widget.userId, widget.contactId, _controller.text);
-        _controller.clear();
-      } catch (e) {
-        print('Error sending message: $e');
-      }
+      await _chatService.sendMessage(widget.userId, widget.contactId, _controller.text);
+      _controller.clear();
     }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   @override
@@ -96,28 +105,57 @@ class _ChatPageState extends State<ChatPage> {
               ? Center(child: CircularProgressIndicator())
               : Expanded(
                   child: ListView.builder(
-                    reverse: true,
+                    controller: _scrollController,
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final message = _messages[index];
                       final isUserMessage = message['sender'] == 'user';
-                      return Align(
-                        alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: isUserMessage ? Colors.black : Color(0xFFB2C2A1),
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: Text(
-                            message['text'] ?? '',
-                            style: TextStyle(
-                              color: isUserMessage ? Colors.white : Colors.black,
-                              fontSize: 16,
+
+                      return Column(
+                        children: [
+                          if (message['showDate'] == true)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Text(
+                                DateFormat('MMMM d, yyyy').format(DateTime.parse(message['timestamp'])),
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          Align(
+                            alignment: isUserMessage ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                              padding: const EdgeInsets.all(12.0),
+                              decoration: BoxDecoration(
+                                color: isUserMessage ? Colors.black : Color(0xFFB2C2A1),
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: isUserMessage ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    message['text'] ?? '',
+                                    style: TextStyle(
+                                      color: isUserMessage ? Colors.white : Colors.black,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    _formatTimestamp(message['timestamp'] ?? ''),
+                                    style: TextStyle(
+                                      color: isUserMessage ? Colors.white70 : Colors.black54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       );
                     },
                   ),
@@ -131,27 +169,19 @@ class _ChatPageState extends State<ChatPage> {
                     controller: _controller,
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
-                      filled: true,
-                      fillColor: Colors.white,
+                      hintStyle: TextStyle(color: Colors.black54),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30.0),
-                        borderSide: BorderSide(
-                          color: Colors.grey,
-                          width: 1.0,
-                        ),
+                        borderRadius: BorderRadius.circular(12.0),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                      fillColor: Colors.white,
+                      filled: true,
                     ),
                   ),
                 ),
-                SizedBox(width: 8.0),
-                CircleAvatar(
-                  radius: 25,
-                  backgroundColor: Color(0xFFFFF9B0),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.black),
-                    onPressed: _sendMessage,
-                  ),
+                IconButton(
+                  icon: Icon(Icons.send),
+                  color: Colors.black,
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
@@ -159,5 +189,18 @@ class _ChatPageState extends State<ChatPage> {
         ],
       ),
     );
+  }
+
+  String _formatTimestamp(String timestamp) {
+    if (timestamp.isEmpty) return '';
+    final dateTime = DateTime.parse(timestamp);
+    final time = DateFormat.jm().format(dateTime);
+    return time;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }

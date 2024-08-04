@@ -16,7 +16,7 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
     'Angry', 'Calm'
   ];
   List<String> _selectedTags = [];
-  List<Map<String, dynamic>> _moodLogs = []; // Dummy data for mood logs
+  List<Map<String, dynamic>> _moodLogs = [];
 
   void _submitMood() {
     if (_selectedMood != null) {
@@ -24,18 +24,30 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
         _moodLogs.add({
           'MoodRating': _selectedMood!,
           'MoodDescription': _descriptionController.text,
-          'MoodTags': _selectedTags.join(', '), // Join selected tags into a comma-separated string
-          'LogDate': DateTime.now(), // Current date and time
+          'MoodTags': _selectedTags.join(', '),
+          'LogDate': DateTime.now(),
         });
 
-        // Clear the form
         _selectedMood = null;
         _descriptionController.clear();
         _selectedTags.clear();
       });
 
-      // Close the dialog after submitting
-      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mood logged successfully!'),
+          duration: Duration(seconds: 5),
+          backgroundColor: Color(0xFFb2c2a1),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please select a mood before submitting.'),
+          duration: Duration(seconds: 5),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -47,11 +59,11 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.all(4.0), // Adjusted padding
-        margin: const EdgeInsets.symmetric(horizontal: 2.0), // Adjusted margin
+        padding: const EdgeInsets.all(4.0),
+        margin: const EdgeInsets.symmetric(horizontal: 2.0),
         decoration: BoxDecoration(
           color: _selectedMood == mood ? color.withOpacity(0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(8.0), // Rounded corners
+          borderRadius: BorderRadius.circular(8.0),
           border: Border.all(
             color: color,
             width: 2.0,
@@ -61,8 +73,8 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
           child: Text(
             emoji,
             style: TextStyle(
-              fontSize: 24, // Smaller emoji size
-              color: color, // Emoji color
+              fontSize: 24,
+              color: color,
             ),
           ),
         ),
@@ -79,7 +91,7 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Color(0xFFb2c2a1), // Soft Green
+            color: Color(0xFFb2c2a1),
           ),
         ),
         SizedBox(height: 10),
@@ -99,8 +111,8 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
                   }
                 });
               },
-              selectedColor: Color(0xFFdcc9f3), // Light Purple
-              backgroundColor: Color(0xFFfff9b0), // Light Yellow
+              selectedColor: Color(0xFFdcc9f3),
+              backgroundColor: Color(0xFFfff9b0),
               labelStyle: TextStyle(
                 color: _selectedTags.contains(tag) ? Colors.white : Colors.black,
               ),
@@ -116,7 +128,7 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mood Tracking'),
-        backgroundColor: Color(0xFFb2c2a1), // Soft Green
+        backgroundColor: Color(0xFFb2c2a1),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -128,18 +140,18 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFb2c2a1), // Soft Green
+                color: Color(0xFFb2c2a1),
               ),
             ),
             SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                _buildMoodButton(1, '😞', Colors.red), // Sad
-                _buildMoodButton(2, '😕', Colors.orange), // Confused
-                _buildMoodButton(3, '😐', Colors.yellow), // Neutral
-                _buildMoodButton(4, '😊', Colors.lightGreen), // Happy
-                _buildMoodButton(5, '😁', Color(0xFFb2c2a1)), // Soft Green
+                _buildMoodButton(1, '😞', Colors.red),
+                _buildMoodButton(2, '😕', Colors.orange),
+                _buildMoodButton(3, '😐', Colors.yellow),
+                _buildMoodButton(4, '😊', Colors.lightGreen),
+                _buildMoodButton(5, '😁', Color(0xFFb2c2a1)),
               ],
             ),
             SizedBox(height: 20),
@@ -148,7 +160,7 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFb2c2a1), // Soft Green
+                color: Color(0xFFb2c2a1),
               ),
             ),
             SizedBox(height: 10),
@@ -158,12 +170,12 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
                 hintText: 'Enter mood description...',
                 border: OutlineInputBorder(),
                 filled: true,
-                fillColor: Color(0xFFfff8ed), // Light Cream
+                fillColor: Color(0xFFfff8ed),
               ),
               maxLines: 3,
             ),
             SizedBox(height: 20),
-            _buildTagSelector(), // Mood tag selector
+            _buildTagSelector(),
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: _submitMood,
@@ -171,14 +183,22 @@ class _MoodTrackingPageState extends State<MoodTrackingPage> {
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
                 textStyle: TextStyle(fontSize: 18),
-                backgroundColor: Color(0xFFb2c2a1), // Soft Green
-                foregroundColor: Colors.white, // Text color
+                backgroundColor: Color(0xFFb2c2a1),
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0), // Rounded corners
+                  borderRadius: BorderRadius.circular(12.0),
                 ),
               ),
             ),
-            // Removed the "Your Mood Logs" text section
+            SizedBox(height: 20),
+            Text(
+              'Your Mood Logs',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFb2c2a1),
+              ),
+            ),
             ListView.builder(
               shrinkWrap: true,
               physics: NeverScrollableScrollPhysics(),

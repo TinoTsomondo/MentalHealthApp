@@ -1,7 +1,8 @@
+// lib/pages/home/home_page.dart
 import 'package:flutter/material.dart';
 import 'moodlogs/mood_logs.dart';
 import 'meditations/meditation_page.dart';
-import 'therapy/therapy_sessions_page.dart';
+import 'therapy/therapy_sessions_page.dart'; // Ensure this import is correct
 import 'journal/journal_page.dart';
 import 'chats/chat_list_page.dart';
 import 'settings/settings_page.dart';
@@ -84,16 +85,16 @@ class HomePage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _buildFeatureCard(
-                    context,
-                    'Journal',
-                    Icons.book,
-                    Color(0xFFfff8ed),
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => JournalPage()),
-                    ),
-                  ),
+                 _buildFeatureCard(
+  context,
+  'Journal',
+  Icons.book,
+  Color(0xFFfff8ed),
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (context) => JournalPage(userId: userId, username: 'User')), // Replace 'User' with the actual username
+  ),
+),
                 ]),
               ),
             ),

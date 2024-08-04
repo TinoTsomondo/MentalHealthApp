@@ -19,6 +19,10 @@ class _SleepPageState extends State<SleepPage> {
   bool _isPlaying = false;
   String _errorMessage = '';
 
+  String getTrackName(String url) {
+    return url.split('/').last.split('.').first.replaceAll('-', ' ');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -114,6 +118,8 @@ class _SleepPageState extends State<SleepPage> {
                           cardColor = Colors.white;
                       }
 
+                      String trackName = getTrackName(_audioUrls[index]);
+
                       return Card(
                         color: cardColor,
                         margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -126,7 +132,7 @@ class _SleepPageState extends State<SleepPage> {
                             color: textColor,
                           ),
                           title: Text(
-                            'Track ${index + 1}',
+                            trackName,
                             style: TextStyle(
                               color: textColor,
                               fontSize: 16,

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
 import 'create_account_page.dart';
+import 'password_reset_page.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -151,6 +152,18 @@ class _LoginPageState extends State<LoginPage> {
               },
               child: const Text('Create an account'),
             ),
+            TextButton(
+  style: TextButton.styleFrom(
+    foregroundColor: const Color(0xFFb2c2a1),
+  ),
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PasswordResetPage()),
+    );
+  },
+  child: const Text('Forgot Password?'),
+),
           ],
         ),
       ),

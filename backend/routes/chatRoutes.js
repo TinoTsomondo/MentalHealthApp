@@ -1,4 +1,3 @@
-// chatRoutes.js
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
@@ -52,7 +51,33 @@ router.get('/:userId', (req, res) => {
 });
 
 // Fetch messages for a specific chat
-// Add this route to chatRoutes.js
+router.get('/messages/:userId/:contactId', (req, res) => {
+  const userId = req.params.userId;
+  const contactId = req.params.contactId;
+
+  const query = `
+    SELECT 
+      Message as text,
+      CASE 
+        WHEN SenderID = ? THEN 'user'
+        ELSE 'contact'
+      END AS sender,
+      Timestamp
+    FROM chats
+    WHERE (SenderID = ? AND ReceiverID = ?) OR (SenderID = ? AND ReceiverID = ?)
+    ORDER BY Timestamp DESC;
+  `;
+
+  db.query(query, [userId, userId, contactId, contactId, userId], (err, results) => {
+    if (err) {
+      console.error('Error fetching chat messages:', err);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    res.json(results);
+  });
+});
+
+// Fetch new messages
 router.get('/messages/:userId/:contactId/new', (req, res) => {
   const userId = req.params.userId;
   const contactId = req.params.contactId;
@@ -81,18 +106,6 @@ router.get('/messages/:userId/:contactId/new', (req, res) => {
   });
 });
 
-// Send a new message
-router.post('/send', (req, res) => {
-  const { senderId, receiverId, message } = req.body;
-  const query = 'INSERT INTO chats (SenderID, ReceiverID, Message, Timestamp) VALUES (?, ?, ?, NOW())';
-
-  db.query(query, [senderId, receiverId, message], (err, result) => {
-    if (err) {
-      console.error('Error sending message:', err);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-    res.json({ success: true, messageId: result.insertId });
-  });
-});
+// Note: The 'send' route is no longer needed here as it's handled by WebSocket
 
 module.exports = router;

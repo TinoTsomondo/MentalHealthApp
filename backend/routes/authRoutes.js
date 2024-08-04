@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db'); // Ensure this path is correct
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken'); // For JWT token generation
 const saltRounds = 10;
+const JWT_SECRET = 'your_jwt_secret'; // Replace with your actual secret key
 
 // Route to create a new account
 router.post('/createAccount', async (req, res) => {
@@ -13,16 +15,30 @@ router.post('/createAccount', async (req, res) => {
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const query = 'INSERT INTO users (Username, PasswordHash, Email, FullName, DateOfBirth, Gender) VALUES (?, ?, ?, ?, ?, ?)';
-    const values = [username, hashedPassword, email, fullName, dateOfBirth, gender];
-
-    db.query(query, values, (error, results) => {
-      if (error) {
-        console.error('Database error:', error);
-        return res.status(500).send({ error: 'Database error: ' + error.message });
+    // Check if the username or email already exists
+    const checkQuery = 'SELECT * FROM users WHERE Username = ? OR Email = ?';
+    db.query(checkQuery, [username, email], async (checkError, checkResults) => {
+      if (checkError) {
+        console.error('Database error:', checkError);
+        return res.status(500).send({ error: 'Database error: ' + checkError.message });
       }
-      res.status(201).send({ message: 'Account created successfully', userId: results.insertId });
+
+      if (checkResults.length > 0) {
+        return res.status(409).send({ error: 'Username or email already exists' });
+      }
+
+      // Hash the password and insert a new user into the database
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      const query = 'INSERT INTO users (Username, PasswordHash, Email, FullName, DateOfBirth, Gender, IsAnonymous) VALUES (?, ?, ?, ?, ?, ?, ?)';
+      const values = [username, hashedPassword, email, fullName, dateOfBirth, gender, isAnonymous];
+
+      db.query(query, values, (error, results) => {
+        if (error) {
+          console.error('Database error:', error);
+          return res.status(500).send({ error: 'Database error: ' + error.message });
+        }
+        res.status(201).send({ message: 'Account created successfully', userId: results.insertId });
+      });
     });
   } catch (err) {
     console.error('Error hashing password:', err);
@@ -54,9 +70,12 @@ router.post('/login', async (req, res) => {
       const match = await bcrypt.compare(password, PasswordHash);
 
       if (match) {
+        // Generate a JWT token
+        const token = jwt.sign({ userId: UserID, username: username }, JWT_SECRET, { expiresIn: '1h' });
         res.status(200).send({ 
           message: 'Login successful',
-          userId: UserID // Include userId in the response
+          userId: UserID, // Include userId in the response
+          token: token // Send JWT token back to client
         });
       } else {
         res.status(401).send({ error: 'Invalid username or password' });
@@ -67,7 +86,6 @@ router.post('/login', async (req, res) => {
     res.status(500).send({ error: 'Error during login: ' + err.message });
   }
 });
-
 
 // New route for account deletion
 router.delete('/deleteAccount/:userId', async (req, res) => {

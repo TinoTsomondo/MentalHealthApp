@@ -5,9 +5,9 @@ import 'dart:convert';
 class AccountService {
   final String apiUrl = kReleaseMode 
     ? 'http://your-cloud-backend-url.com/api'
-    :  'http://localhost:3001/api';
+    : 'http://localhost:3001/api';
 
-
+  // Create an account
   Future<void> createAccount(
       String username,
       String password,
@@ -35,6 +35,7 @@ class AccountService {
     }
   }
 
+  // Delete account without token
   Future<void> deleteAccount(String userId) async {
     final response = await http.delete(
       Uri.parse('$apiUrl/auth/deleteAccount/$userId'),

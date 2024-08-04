@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:provider/provider.dart';
 import 'pages/splash_screen.dart'; // Import the splash screen
+import 'pages/settings/settings_notifications.dart'; // Import the NotificationSettings
 
 void main() {
   HttpOverrides.global = MyHttpOverrides();
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => NotificationSettings(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyHttpOverrides extends HttpOverrides {

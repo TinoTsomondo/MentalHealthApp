@@ -1,26 +1,28 @@
-// src/backend/routes/therapists.js
+// src/routes/therapistsDashRouter.js
+
 const express = require('express');
+const db = require('../../backend/db'); // Adjust this path to your actual database connection file
+
 const router = express.Router();
-const TherapistController = require('../controllers/TherapistController');
-const { authenticate, authorize } = require('../middleware/authMiddleware');
 
-router.get('/dashboard', authenticate, authorize('therapist'), TherapistController.getDashboardData);
-router.get('/sessions', authenticate, authorize('therapist'), TherapistController.getSessions);
-router.post('/sessions', authenticate, authorize('therapist'), TherapistController.addSession);
-router.put('/sessions/:id', authenticate, authorize('therapist'), TherapistController.updateSession);
-router.delete('/sessions/:id', authenticate, authorize('therapist'), TherapistController.deleteSession);
+router.get('/:therapistId/sessions', async (req, res) => {
+  try {
+    const therapistId = req.params.therapistId;
+    const query = `
+      SELECT ts.*, u.Fullname AS PatientName
+      FROM therapy_sessions ts
+      JOIN users u ON ts.UserID = u.UserID
+      WHERE ts.TherapistID = ?
+      ORDER BY ts.ScheduledAt ASC
+    `;
+    const [rows] = await db.query(query, [therapistId]);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching therapist sessions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
-router.get('/session-logs', authenticate, authorize('therapist'), TherapistController.getSessionLogs);
-router.put('/session-logs/:id', authenticate, authorize('therapist'), TherapistController.updateSessionLog);
-
-router.get('/mood-logs', authenticate, authorize('therapist'), TherapistController.getMoodLogs);
-
-router.get('/notifications', authenticate, authorize('therapist'), TherapistController.getNotifications);
-router.post('/notifications/:id/read', authenticate, authorize('therapist'), TherapistController.markNotificationAsRead);
-
-router.get('/analytics', authenticate, authorize('therapist'), TherapistController.getAnalyticsData);
-
-router.get('/clients', authenticate, authorize('therapist'), TherapistController.getClients);
-router.get('/clients/:username', authenticate, authorize('therapist'), TherapistController.getClientDetails);
+// Add other routes as needed
 
 module.exports = router;

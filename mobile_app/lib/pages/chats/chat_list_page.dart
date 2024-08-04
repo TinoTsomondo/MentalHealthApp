@@ -49,7 +49,7 @@ class _ChatListPageState extends State<ChatListPage> {
         backgroundColor: Colors.black,
       ),
       body: Container(
-        color: Color(0xFFFFF9B0),
+        color: Color(0xFFFFF9B0), // Background color
         child: Column(
           children: [
             Padding(
@@ -90,7 +90,7 @@ class _ChatListPageState extends State<ChatListPage> {
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                             child: Card(
-                              color: Color(0xFFB2C2A1),
+                              color: Color(0xFFB2C2A1), // Card background color
                               elevation: 5,
                               child: ListTile(
                                 leading: CircleAvatar(

@@ -1,122 +1,208 @@
+// lib/pages/therapy/book_therapy_session_page.dart
 import 'package:flutter/material.dart';
-import '/api/therapy_api.dart'; // Import your API functions for booking sessions
+import 'package:intl/intl.dart';
+import '../../models/therapy_session.dart';
+import '../../services/therapy_api.dart';
+import 'therapy_session_confirmation_page.dart';
 
 class BookTherapySessionPage extends StatefulWidget {
-  const BookTherapySessionPage({Key? key}) : super(key: key);
+  final int userId;
+
+  const BookTherapySessionPage({Key? key, required this.userId}) : super(key: key);
 
   @override
   _BookTherapySessionPageState createState() => _BookTherapySessionPageState();
 }
 
 class _BookTherapySessionPageState extends State<BookTherapySessionPage> {
-  final _formKey = GlobalKey<FormState>(); // Form key for validation
-  final TextEditingController _therapistController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  late Future<List<Map<String, dynamic>>> _therapists;
+  int? _selectedTherapistId;
+  String? _selectedTherapistName;
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
   final TextEditingController _durationController = TextEditingController();
+  final TextEditingController _agendaController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _therapists = TherapyAPI.fetchTherapists();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Book Therapy Session'),
-        backgroundColor: const Color(0xFFB2C2A1), // Green color
+        title: Text('Book Therapy Session'),
+        backgroundColor: const Color(0xFFb2c2a1),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Book a Therapy Session',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFB2C2A1),
-                ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: EdgeInsets.all(16.0),
+          children: [
+            FutureBuilder<List<Map<String, dynamic>>>(
+              future: _therapists,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return CircularProgressIndicator();
+                } else if (snapshot.hasError) {
+                  return Text('Error: ${snapshot.error}');
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Text('No therapists available');
+                } else {
+                  return DropdownButtonFormField<int>(
+                    value: _selectedTherapistId,
+                    items: snapshot.data!.map((therapist) {
+                      return DropdownMenuItem<int>(
+                        value: therapist['TherapistID'],
+                        child: Text(therapist['FullName']),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedTherapistId = value;
+                        _selectedTherapistName = snapshot.data!
+                            .firstWhere((therapist) => therapist['TherapistID'] == value)['FullName'];
+                      });
+                    },
+                    decoration: InputDecoration(labelText: 'Select Therapist'),
+                    validator: (value) {
+                      if (value == null) {
+                        return 'Please select a therapist';
+                      }
+                      return null;
+                    },
+                  );
+                }
+              },
+            ),
+            SizedBox(height: 16),
+            ListTile(
+              title: Text(_selectedDate == null
+                  ? 'Select Date'
+                  : DateFormat('yyyy-MM-dd').format(_selectedDate!)),
+              trailing: Icon(Icons.calendar_today),
+              onTap: () async {
+                final DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate ?? DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(Duration(days: 365)),
+                );
+                if (picked != null && picked != _selectedDate) {
+                  setState(() {
+                    _selectedDate = picked;
+                  });
+                }
+              },
+            ),
+            SizedBox(height: 16),
+            ListTile(
+              title: Text(_selectedTime == null
+                  ? 'Select Time'
+                  : _selectedTime!.format(context)),
+              trailing: Icon(Icons.access_time),
+              onTap: () async {
+                final TimeOfDay? picked = await showTimePicker(
+                  context: context,
+                  initialTime: _selectedTime ?? TimeOfDay.now(),
+                );
+                if (picked != null && picked != _selectedTime) {
+                  setState(() {
+                    _selectedTime = picked;
+                  });
+                }
+              },
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _durationController,
+              decoration: InputDecoration(labelText: 'Duration (minutes)'),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter the duration';
+                }
+                if (int.tryParse(value) == null) {
+                  return 'Please enter a valid number';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 16),
+            TextFormField(
+              controller: _agendaController,
+              decoration: InputDecoration(labelText: 'Session Agenda'),
+              maxLines: 3,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter the session agenda';
+                }
+                return null;
+              },
+            ),
+            SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _submitForm,
+              child: Text('Book Session'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFb2c2a1),
+                foregroundColor: Colors.white,
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _therapistController,
-                decoration: const InputDecoration(
-                  labelText: 'Therapist Name',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the therapist name';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _dateController,
-                decoration: const InputDecoration(
-                  labelText: 'Scheduled Date (YYYY-MM-DD HH:MM:SS)',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                keyboardType: TextInputType.datetime,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the scheduled date';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _durationController,
-                decoration: const InputDecoration(
-                  labelText: 'Duration (minutes)',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the duration';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _submitForm,
-                child: const Text('Book Session'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFF9B0), // Yellow color
-                  foregroundColor: Colors.black, // Text color
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   void _submitForm() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      final therapistName = _therapistController.text;
-      final scheduledDate = _dateController.text;
-      final duration = int.parse(_durationController.text);
+    if (_formKey.currentState!.validate() &&
+        _selectedDate != null &&
+        _selectedTime != null &&
+        _selectedTherapistId != null &&
+        _selectedTherapistName != null) {
+      DateTime scheduledAt = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
 
       try {
-        await TherapyAPI.bookTherapySession(therapistName, scheduledDate, duration);
-        Navigator.pop(context); // Go back to previous page after booking
+        // Book the therapy session
+        TherapySession bookedSession = await TherapyAPI.bookTherapySession(
+          userId: widget.userId,
+          therapistId: _selectedTherapistId!,
+          therapistName: _selectedTherapistName!,
+          scheduledAt: scheduledAt,
+          duration: int.parse(_durationController.text),
+          sessionAgenda: _agendaController.text,
+        );
+
+        // Create Zoom meeting
+        final zoomMeeting = await TherapyAPI.createZoomMeeting(widget.userId, bookedSession);
+
+        // Update session with Zoom details
+        bookedSession = await TherapyAPI.updateSessionWithZoomDetails(
+          bookedSession.sessionId,
+          zoomMeeting['id'].toString(),
+          zoomMeeting['join_url'],
+        );
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TherapySessionConfirmationPage(session: bookedSession),
+          ),
+        );
       } catch (e) {
-        // Handle error
-        print('Error booking therapy session: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to book session: $e')),
+        );
       }
     }
   }
